@@ -417,6 +417,8 @@ more-helpful local prompt."
 
 (use-package projectile
   :ensure t
+  :bind-keymap
+  ("C-c p" . projectile-command-map)
   :config
   (projectile-global-mode)
   (setq projectile-mode-line
