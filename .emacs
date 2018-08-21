@@ -12,7 +12,8 @@
 (defconst mm/tmp-dir (mm/join-dirs mm/emacs-dir ".tmp"))
 (defconst mm/backups-dir (mm/join-dirs mm/tmp-dir "backups"))
 (defconst mm/autosaves-dir (mm/join-dirs mm/tmp-dir "autosaves"))
-(defconst mm/elisp-dir (mm/join-dirs mm/emacs-dir ".tmp"))
+(defconst mm/elisp-dir (mm/join-dirs mm/tmp-dir "elisp"))
+(defconst mm/site-file (concat mm/elisp-dir "site.el"))
 
 (let ((dirs (list mm/tmp-dir mm/backups-dir mm/autosaves-dir mm/elisp-dir)))
   (dolist (dir dirs)
@@ -151,6 +152,19 @@
     (when (= pos (point))
       ad-do-it)))
 
+
+;;;
+;;; C
+;;;
+
+(setq c-basic-offset 4) ; C indent 4
+
+;;;
+;;; VHDL
+;;;
+
+(setq vhdl-basic-offset 4) ; VHDL indent 4
+
 ;;;
 ;;; Modernize Emacs
 ;;;
@@ -239,7 +253,8 @@
     (eshell/alias "emacs" "find-file $1")
     (eshell/alias "ee" "find-file-other-window $1")
     (eshell/alias "d" "dired $1")
-    (eshell/alias "ll" "ls -rtlh")))
+    (eshell/alias "ll" "ls -rtlh")
+    (eshell/alias "up" "eshell-up $1")))
 
 ;;; Clear shell
 (defun eshell/clear ()
@@ -393,6 +408,7 @@ more-helpful local prompt."
   :init
   (setq ivy-use-virtual-buffers t)
   (setq ivy-count-format "(%d/%d) ")
+  (setq ivy-height 18)
   :bind
   ("C-x b" . ivy-switch-buffer)
   :config
@@ -400,16 +416,34 @@ more-helpful local prompt."
   (bind-key "C-c C-r" 'ivy-resume))
 
 (use-package swiper
-  :ensure t
-  :bind
-  ("C-s" . swiper))
+  :ensure t)
 
 (use-package counsel
   :ensure t
+  :config
+  (setq counsel-grep-base-command "ag --nocolor %s %s")
   :bind
   ("M-x" . counsel-M-x)
+  ("C-s" . counsel-grep-or-swiper)
   ("C-x C-f" . counsel-find-file)
   ("C-c k" . counsel-ag))
+
+;;;
+;;; Avy
+;;;
+(use-package avy
+  :ensure t
+  :init
+  (avy-setup-default)
+  :config
+  (setq avy-all-windows 'all-frames)
+  :bind
+  ("C-:" . avy-goto-char)
+  ("C-'" . avy-goto-char-2)
+  ("M-g f" . avy-goto-line)
+  ("M-g w" . avy-goto-word-1)
+  ("C-M-'" . avy-goto-char-timer)
+  ("C-c C-j" . avy-resume))
 
 ;;;
 ;;; projectile
@@ -418,11 +452,42 @@ more-helpful local prompt."
 (use-package projectile
   :ensure t
   :config
-  (projectile-global-mode)
+  (defadvice projectile-on (around exlude-tramp activate)
+    (unless  (--any? (and it (file-remote-p it))
+                     (list
+                      (buffer-file-name)
+                      list-buffers-directory
+                      default-directory))
+      ad-do-it))
   (setq projectile-mode-line
         '(:eval (format " [%s]" (projectile-project-name))))
   (setq projectile-remember-window-configs t)
-  (setq projectile-completion-system 'ivy))
+  (setq projectile-completion-system 'ivy)
+  (projectile-global-mode))
+
+(use-package counsel-projectile
+  :ensure t
+  :init
+  (counsel-projectile-mode))
+
+;;;
+;;; Perforce
+;;;
+
+(use-package p4)
+
+;;;
+;;; Org-mode
+;;;
+
+(setq org-todo-keywords
+      '((sequence "TODO" "STARTED" "DONE")))
+
+(setq org-todo-keyword-faces
+      '(("STARTED" . "orange")))
+
+(setq org-log-done 'time)
+(eval-after-load "org" '(require 'ox-md nil t))
 
 ;;;
 ;;; Keyboard bindings
@@ -443,3 +508,9 @@ more-helpful local prompt."
 
 ;;; Fullscreen
 (global-set-key (kbd "<f11>") 'toggle-frame-fullscreen)
+
+;;;
+;;; Load site file if it exists
+;;;
+(if (file-exists-p mm/site-file)
+    (load-file mm/site-file))
