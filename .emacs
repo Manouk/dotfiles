@@ -421,7 +421,7 @@ more-helpful local prompt."
 (use-package counsel
   :ensure t
   :config
-  (setq counsel-grep-base-command "ag --nocolor %s %s")
+  (setq counsel-grep-base-command "rg -i -M 120 --no-heading --line-number --color never '%s' %s")
   :bind
   ("M-x" . counsel-M-x)
   ("C-s" . counsel-grep-or-swiper)
